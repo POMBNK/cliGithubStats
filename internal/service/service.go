@@ -6,22 +6,30 @@ import (
 
 	"github.com/POMBNK/cliGitStats/pkg/scanHelpers/finder"
 	"github.com/POMBNK/cliGitStats/pkg/scanHelpers/writer"
+	"github.com/POMBNK/cliGitStats/pkg/statHelpers/collector"
+	"github.com/POMBNK/cliGitStats/pkg/statHelpers/printer"
 )
 
 const dotfileDirectory = "/.gogitstats"
 
 type Service struct {
-	folder string
-	finder *finder.Finder
-	writer *writer.Writer
+	folder    string
+	email     string
+	finder    *finder.Finder
+	writer    *writer.Writer
+	collector *collector.Collector
+	printer   *printer.Printer
 }
 
 // Service constructor
-func New(folder string, finder *finder.Finder, writer *writer.Writer) *Service {
+func New(folder string, email string, finder *finder.Finder, writer *writer.Writer, collector *collector.Collector, printer *printer.Printer) *Service {
 	return &Service{
-		folder: folder,
-		finder: finder,
-		writer: writer,
+		folder:    folder,
+		email:     email,
+		finder:    finder,
+		writer:    writer,
+		collector: collector,
+		printer:   printer,
 	}
 }
 
@@ -30,6 +38,10 @@ func (s *Service) Run() {
 
 	if err := s.findFiles(); err != nil {
 		log.Fatalf("Can't run service findFiles() %v", err)
+	}
+
+	if err := s.showStat(); err != nil {
+		log.Fatalf("Can't run service showStats() %v", err)
 	}
 
 }
@@ -67,4 +79,23 @@ func (s *Service) getDotFilePath() string {
 	dotFile := usr.HomeDir + dotfileDirectory
 
 	return dotFile
+}
+
+func (s *Service) getStats() (map[int]int, error) {
+	commits, err := s.collector.ProcessRepos(s.email)
+	if err != nil {
+		return nil, err
+	}
+
+	return commits, nil
+}
+
+func (s *Service) showStat() error {
+	commits, err := s.getStats()
+	if err != nil {
+		return err
+	}
+	s.printer.Show(commits)
+
+	return nil
 }
